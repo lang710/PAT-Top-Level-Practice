@@ -1,0 +1,176 @@
+#include <iostream>
+#include <vector>
+#include <utility>
+
+using namespace std;
+
+int dfs(int g_size,vector<vector<int>> visit,int sx,int sy);
+int getHole(int **graph,int g_size);
+
+
+/*
+ * visit中:
+ * visit[i][j]=0,表示所有非障碍点
+ * visit[i][j]=1,表示障碍
+ * visit[i][j]=2,表示连接外界的点,未被障碍围起来
+ * visit[i][j]=3,表示所有没有被障碍围起来的点
+ * visit[i][j]=4,表示被围起来的非障碍点
+ *
+*/
+int getHole(int **graph,int g_size){
+    vector<vector<int>> visit(g_size,vector<int>(g_size,1));
+    for(int i=0;i<g_size;i++) {
+        if (graph[i][0] == 0)
+            visit[i][0]=2;
+        if(graph[i][g_size-1]==0)
+            visit[i][g_size-1]=2;
+        if(graph[0][i]==0)
+            visit[0][i]=2;
+        if(graph[g_size-1][i]==0)
+            visit[g_size-1][i]=2;
+    }
+    for(int i=1;i<g_size-1;i++)
+        for(int j=1;j<g_size-1;j++)
+            visit[i][j]=graph[i][j];
+
+    int count=dfs(g_size,visit,0,0);
+    cout<< count<<endl;
+    return 0;
+}
+
+int dfs(int g_size,vector<vector<int>> visit,int sx,int sy){
+    cout<<"start\n";
+    vector<pair<int,int>> path;
+    path.emplace_back(make_pair(sx,sy));
+    visit[sx][sy]=3;
+    pair<int,int> cpoint;
+    int nx,ny,i,j;
+    bool back;
+    while(!path.empty()){
+        back=true;
+        cpoint=path.back();
+        //cout<<cpoint.first<<' '<<cpoint.second<<endl;
+        for(i=0;i<4;i++){
+            if(i==0)
+                nx=cpoint.first-1,ny=cpoint.second;
+            if(i==1)
+                nx=cpoint.first+1,ny=cpoint.second;
+            if(i==2)
+                nx=cpoint.first,ny=cpoint.second-1;
+            if(i==3)
+                nx=cpoint.first,ny=cpoint.second+1;
+
+            if((nx>=0&&nx<=g_size-1&&ny>=0&&ny<=g_size-1)&&(visit[nx][ny]==0||visit[nx][ny]==2)) {
+                visit[nx][ny]=3;
+                path.emplace_back(make_pair(nx,ny));
+                back=false;
+                break;
+            }
+        }
+        if(back) {
+            path.pop_back();
+            if(path.empty())
+                for(i=0;i<g_size&&back;i++)
+                    for(j=0;j<g_size&&back;j++)
+                        if(visit[i][j]==2) {
+                            visit[i][j]=3;
+                            path.emplace_back(make_pair(i, j));
+                            back=false;
+                        }
+        }
+    }
+
+    back=true;
+    for(i=0;i<g_size&&back;i++)
+        for(j=0;j<g_size&&back;j++)
+            if(visit[i][j]==0) {
+                visit[i][j]=4;
+                path.emplace_back(make_pair(i, j));
+                back=false;
+            }
+    int count=0;
+    if(!path.empty())
+        count++;
+    while(!path.empty()){
+        back=true;
+        cpoint=path.back();
+        for(i=0;i<4;i++){
+            if(i==0)
+                nx=cpoint.first-1,ny=cpoint.second;
+            if(i==1)
+                nx=cpoint.first+1,ny=cpoint.second;
+            if(i==2)
+                nx=cpoint.first,ny=cpoint.second-1;
+            if(i==3)
+                nx=cpoint.first,ny=cpoint.second+1;
+
+            if(visit[nx][ny]==0) {
+                visit[nx][ny]=4;
+                path.emplace_back(make_pair(nx,ny));
+                back=false;
+                break;
+            }
+        }
+        if(back) {
+            path.pop_back();
+            if(path.empty())
+                for (i = 0; i < g_size && back; i++)
+                    for (j = 0; j < g_size && back; j++)
+                        if (visit[i][j] == 0) {
+                            visit[i][j] = 4;
+                            path.emplace_back(make_pair(i, j));
+                            count++;
+                            back = false;
+                        }
+        }
+    }
+
+    for(i=0;i<g_size;i++) {
+        for (j = 0; j < g_size; j++)
+            cout << visit[i][j] << ' ';
+        cout<<endl;
+    }
+
+    return count;
+}
+
+int main(){
+    int g_size;
+    cin>>g_size;
+    int **graph=new int*[g_size];
+    for(int i=0;i<g_size;i++)
+        graph[i]=new int[g_size];
+    for(int i=0;i<g_size;i++)
+        for(int j=0;j<g_size;j++)
+            cin>>graph[i][j];
+    //cout<<"input finished\n";
+    getHole(graph,g_size);
+    return 0;
+}
+
+/*
+ *
+ *
+ *
+判断一张图中由四连接障碍围成的区域有多少个hole
+围棋中棋子气为零的区域
+
+ 思路：
+ 1.设一个辅助访问矩阵，visit[i][j]=0
+ 2.选出所有的边界不是障碍的点，记为visit[i][j]=1
+ 3.对visit中所有的点进行dfs或者bfs，直到标记所有可达点visit[i][j]=-1
+ 4.对visit中visit[i][j]=0的点进行dfs，判断有多少个dfs，即为多少个hole
+
+10
+0 0 0 0 0 0 0 0 0 0
+0 1 0 0 0 0 1 0 1 1
+0 1 1 1 0 0 1 0 1 1
+0 1 0 0 1 0 1 1 1 0
+0 1 0 0 1 0 0 1 0 1
+1 1 1 1 1 0 0 0 0 0
+0 1 0 0 1 0 1 0 0 1
+1 0 0 0 1 1 0 0 0 1
+1 0 0 0 1 0 1 0 0 1
+1 1 1 1 1 1 1 1 1 1
+
+ */
